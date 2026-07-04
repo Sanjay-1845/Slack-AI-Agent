@@ -6,6 +6,7 @@ import { ChatPromptTemplate } from '@langchain/core/prompts';
 import express from 'express';
 import dotenv from 'dotenv';
 import axios from 'axios';
+import { Timestamp } from 'mongodb';
 
 dotenv.config();
 
@@ -57,5 +58,57 @@ class SlackAIAgent{
                 this.logs.error('Error processing member_joined_channel event:', error.message);
             }
         });
+    }
+
+    setupExpress() {
+        this.app.use(express.json());
+    
+        this.app.get('/health', (req, res) => {
+            res.json({ status: 'Healthy', timestamp: new Date().toISOString() });
+        })
+
+        if(process.env.NODE_ENV === 'development') {
+            this.app.post('/test/analyze-member', async (req, res) => {
+                try {
+                    const { memberInfo } = req.body;
+                    if(!memberInfo  ) {
+                        return res.status(400).json({ error: 'Member info is required' });
+                    }
+                    const analysis = await this.analyzeAndPostMember(memberInfo);
+                    res.json({ success: true, analysis, timestamp: new Date().toISOString() });
+                } catch (error) {
+                    logs.error('Error in test/analyze-member:', error.message);
+                    res.status(500).json({ error: 'Analysis Failed', message: error.message });
+                }
+            });
+        }
+        
+        this.app.use((err, req, res, next) => {
+            logs.error('Express error:', err.message);
+            res.status(500).json({ error: 'Internal Server Error', message: err.message });
+        })
+        
+    }
+
+    async getUserInfo(userId) {
+        const result = await this.webClient.users.info({ user: userId });
+        const user = result.user;
+        return {
+            id: user.id,
+            name: user.real_name || user.name,
+            username: user.name,
+            email: user.profile?.email,
+            title: user.profile?.title,
+            timezone: user.tz,
+            profile: {
+                firstName: user.profile?.first_name,
+                lastName: user.profile?.last_name,
+                statusText: user.profile?.status_text
+            }
+        } 
+    }
+
+    async analyzeAndPostMember(memberInfo) {
+        
     }
 }
