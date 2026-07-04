@@ -30,7 +30,32 @@ class SlackAIAgent{
             modelName: 'gpt-4',
             temperature: 0.3
         });
-        this.setupSlacckEvents();
+        this.setupSlackEvents();
         this.setupExpress();
+    }
+
+    setupSlackEvents() {
+        this.slack.event('team_join', async ({ event }) => {
+            try {
+                log.info(`New user joined: ${event.user.real_name} || ${event.user.name}`);
+                const userInfo = await this.getUserInfo(event.user.id);
+                await this.analyzeAndPostMember(userInfo);
+            }
+            catch (error) {
+                this.logs.error('Error processing team_join event:', error.message);
+            }
+        });
+        this.slack.event('member_joined_channel', async ({ event }) => {
+            try {
+                if(event.channel_type === 'C') {
+                    log.info(`User ${event.user} joined channel || ${event.channel}`);
+                    const userInfo = await this.getUserInfo(event.user);
+                    await this.analyzeAndPostMember(userInfo);
+                }
+            }
+            catch (error) {
+                this.logs.error('Error processing member_joined_channel event:', error.message);
+            }
+        });
     }
 }
