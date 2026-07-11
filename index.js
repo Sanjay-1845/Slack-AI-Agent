@@ -147,6 +147,29 @@ class SlackAIAgent{
             log.error('Research error:', error.message);
         }
         return results;
-    }    
+    }
+
+    
+    async getCompanyInfo(domain) {
+        try {
+            const response = await axios.get(`https://www.${domain}`, {
+                timeout: 5000,
+                headers: { 'User-Agent': 'Mozilla/5.0' }
+            });
+
+            const titleMatch = response.data.match(/<title>(.*?)<\/title>/i)
+            const title = titleMatch ? titleMatch[1] : `Company: ${domain}`;
+
+            return {
+                url: `https://www.${domain}`,
+                title: title,
+                content: `Company website for ${domain}`,
+                type: 'company'
+            }
+        } catch (error) {
+            log.error(`Could not fetch ${domain}:`, error.message);
+            return null;
+        }
+    }
     
 }
